@@ -1,0 +1,14 @@
+{
+  "name": "school-management-stack",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start-all": "concurrently \"npm run dev --prefix school-dashboard\" \"npm run dev --prefix backend\"",
+    "lint:frontend": "npm run lint --prefix school-dashboard",
+    "lint:backend": "npm run lint --prefix backend",
+    "ci": "npm run lint:backend && npm run lint:frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

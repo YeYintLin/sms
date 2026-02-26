@@ -1,0 +1,297 @@
+{
+  "info": {
+    "_postman_id": "a6f6e3bf-3a03-4b6a-aec8-6fa18f017510",
+    "name": "SMS Security Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Security validation for role escalation, auth throttling/lockout, upload whitelist, file size, and file ownership checks."
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "emailA", "value": "sec_user_a@example.com" },
+    { "key": "emailB", "value": "sec_user_b@example.com" },
+    { "key": "password", "value": "password123" },
+    { "key": "badPassword", "value": "wrong-password" },
+    { "key": "tokenA", "value": "" },
+    { "key": "tokenB", "value": "" },
+    { "key": "fileIdA", "value": "" },
+    { "key": "validFilePath", "value": "C:/temp/test.pdf" },
+    { "key": "invalidFilePath", "value": "C:/temp/malware.exe" },
+    { "key": "bigFilePath", "value": "C:/temp/bigfile-over-10mb.pdf" }
+  ],
+  "item": [
+    {
+      "name": "1. Register Role Escalation Attempt (Should NOT become admin)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sec User A\",\n  \"email\": \"{{emailA}}\",\n  \"password\": \"{{password}}\",\n  \"role\": \"admin\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Register returns 200 or user exists 400', function () {",
+              "  pm.expect([200, 400]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Login User A (Save tokenA)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{emailA}}\",\n  \"password\": \"{{password}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  const json = pm.response.json();",
+              "  pm.collectionVariables.set('tokenA', json.token || '');",
+              "}",
+              "pm.test('Login success unless locked/rate-limited', function () {",
+              "  pm.expect([200, 429]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Verify User A Role (must not be admin)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "x-auth-token", "value": "{{tokenA}}" }],
+        "url": "{{baseUrl}}/api/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Got profile', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const data = pm.response.json();",
+              "pm.test('Role is not admin', function () {",
+              "  pm.expect(data.role).to.not.eql('admin');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Login Wrong Password (run this request 6x quickly)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{emailA}}\",\n  \"password\": \"{{badPassword}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Wrong login becomes 400 or 429', function () {",
+              "  pm.expect([400, 429]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Upload Valid File as User A (save fileIdA)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "x-auth-token", "value": "{{tokenA}}" }],
+        "url": "{{baseUrl}}/api/files",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "name", "value": "safe-file", "type": "text" },
+            { "key": "file", "type": "file", "src": "{{validFilePath}}" }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Upload success', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('fileIdA', json._id || '');"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Upload Invalid File Type (should fail)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "x-auth-token", "value": "{{tokenA}}" }],
+        "url": "{{baseUrl}}/api/files",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "name", "value": "bad-file", "type": "text" },
+            { "key": "file", "type": "file", "src": "{{invalidFilePath}}" }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Invalid file blocked', function () {",
+              "  pm.response.to.have.status(400);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Upload Too Large File (should fail)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "x-auth-token", "value": "{{tokenA}}" }],
+        "url": "{{baseUrl}}/api/files",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "name", "value": "too-big-file", "type": "text" },
+            { "key": "file", "type": "file", "src": "{{bigFilePath}}" }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Oversized file blocked', function () {",
+              "  pm.response.to.have.status(400);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Register User B",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sec User B\",\n  \"email\": \"{{emailB}}\",\n  \"password\": \"{{password}}\",\n  \"role\": \"student\"\n}"
+        }
+      }
+    },
+    {
+      "name": "9. Login User B (save tokenB)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{emailB}}\",\n  \"password\": \"{{password}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  const json = pm.response.json();",
+              "  pm.collectionVariables.set('tokenB', json.token || '');",
+              "}",
+              "pm.test('User B login success', function () {",
+              "  pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. User B Download User A File (should be 403)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "x-auth-token", "value": "{{tokenB}}" }],
+        "url": "{{baseUrl}}/api/files/{{fileIdA}}/download"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Cross-user download blocked', function () {",
+              "  pm.response.to.have.status(403);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. User B Delete User A File (should be 403)",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "x-auth-token", "value": "{{tokenB}}" }],
+        "url": "{{baseUrl}}/api/files/{{fileIdA}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Cross-user delete blocked', function () {",
+              "  pm.response.to.have.status(403);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
+

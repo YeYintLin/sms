@@ -1,0 +1,145 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260226105705
+Username: ALTAIR\ASUS
+RunAs User: ALTAIR\ASUS
+Configuration Name: 
+Machine: ALTAIR (Microsoft Windows NT 10.0.26100.0)
+Host Application: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -Command Start-Transcript -Path transcript.txt; Get-Content school-dashboard/src/pages/Results.jsx | Select-String -Pattern 'results.forEach' -Context 60; Stop-Transcript
+Process ID: 8644
+PSVersion: 5.1.26100.4768
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.4768
+BuildVersion: 10.0.26100.4768
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is transcript.txt
+
+      const [isSaving, setIsSaving] = useState(false);
+      const [filterName, setFilterName] = useState('');
+      const [filterYear, setFilterYear] = useState('');
+      const [filterGrade, setFilterGrade] = useState('');
+      const termStorageKey = 'results_active_term_by_grade';
+
+      const getSavedTerm = (grade) => {
+          if (!grade) return '';
+          try {
+              const raw = localStorage.getItem(termStorageKey);
+              const parsed = raw ? JSON.parse(raw) : {};
+              return parsed && typeof parsed === 'object' ? parsed[grade] : '';
+          } catch {
+              return '';
+          }
+      };
+
+      const saveActiveTerm = (grade, term) => {
+          if (!grade || !term) return;
+          try {
+              const raw = localStorage.getItem(termStorageKey);
+              const parsed = raw ? JSON.parse(raw) : {};
+              const next = parsed && typeof parsed === 'object' ? { ...parsed } : {};
+              next[grade] = term;
+              localStorage.setItem(termStorageKey, JSON.stringify(next));
+          } catch {
+              // ignore
+          }
+      };
+
+      const openConfirm = ({ title, message, onConfirm }) => {
+          setConfirm({ isOpen: true, title, message, onConfirm });
+      };
+      const formatStudentId = (value) => {
+          if (!value) return value;
+          const v = String(value);
+          return v
+              .replace(/grade-(\d+)/i, 'g$1')
+              .replace(/^kg-/i, 'kg-');
+      };
+
+      const getTotal = (scores) =>
+          activeSubjects.reduce((sum, subj) => {
+              const val = Number(scores?.[subj]);
+              return sum + (Number.isFinite(val) ? val : 0);
+          }, 0);
+
+      const isPersistedResultId = (id) => typeof id === 'string' && /^[a-fA-F0-9]{24}$/.test(id);
+
+      const refreshResults = async () => {
+          const res = await api.get('/results');
+          const payload = res.data?.data ?? [];
+          const meta = res.data?.meta || {};
+          const results = Array.isArray(payload) ? payload : [];
+
+          const nextGrades = new Set(grades);
+          const nextSubjectsByGrade = {};
+          const nextRowsByGrade = {};
+          const nextTermsByGrade = {};
+
+>         results.forEach((result) => {
+              const grade = result.grade || 'Unknown';
+              const term = result.term || 'Term 1';
+              nextGrades.add(grade);
+
+              const subjectNames = (result.subjects || []).map((s) => s.name);
+              nextSubjectsByGrade[grade] = Array.from(
+                  new Set([...(nextSubjectsByGrade[grade] || []), ...subjectNames])
+              );
+
+              const studentId = result.student?.studentId || '-';
+              const studentName = result.student?.userId?.name || 'Unknown';
+              const scores = (result.subjects || []).reduce((acc, s) => {
+                  acc[s.name] = s.score;
+                  return acc;
+              }, {});
+
+              if (!nextTermsByGrade[grade]) nextTermsByGrade[grade] = [];
+              if (!nextTermsByGrade[grade].includes(term)) nextTermsByGrade[grade].push(term);
+
+              if (!nextRowsByGrade[grade]) nextRowsByGrade[grade] = {};
+              if (!nextRowsByGrade[grade][term]) nextRowsByGrade[grade][term] = [];
+              nextRowsByGrade[grade][term].push({
+                  id: result._id,
+                  studentId,
+                  name: studentName,
+                  scores
+              });
+          });
+
+          if (results.length) {
+              setGrades(Array.from(nextGrades));
+              setSubjectsByGrade((prev) => ({ ...prev, ...nextSubjectsByGrade }));
+              setTermsByGrade((prev) => ({ ...prev, ...nextTermsByGrade }));
+              setGradeRows((prev) => ({ ...prev, ...nextRowsByGrade }));
+              if (meta.grade && !visibleGrades.includes(meta.grade)) {
+                  setVisibleGrades((prev) => (prev.includes(meta.grade) ? prev : [...prev, meta.grade]));
+              }
+              if (!activeGrade && meta.grade) {
+                  setActiveGrade(meta.grade);
+              }
+          }
+          if (meta.term && (!activeTerm || !termsByGrade[activeGrade]?.includes(meta.term))) {
+              setActiveTerm(meta.term);
+          }
+      };
+
+      const persistActiveRows = async () => {
+          const rows = gradeRows[activeGrade]?.[activeTerm] || [];
+          for (const row of rows) {
+              const normalizedStudentId = String(row.studentId || '').trim();
+              if (!normalizedStudentId) {
+                  throw new Error('Student ID is required for each row before saving.');
+              }
+
+              const payload = {
+                  studentId: normalizedStudentId,
+                  grade: activeGrade,
+                  term: activeTerm,
+                  subjects: activeSubjects.map((subjectName) => {
+                      const score = Number(row.scores?.[subjectName]);
+**********************
+Windows PowerShell transcript end
+End time: 20260226105706
+**********************
