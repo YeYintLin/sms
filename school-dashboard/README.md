@@ -1,16 +1,45 @@
-# React + Vite
+﻿# School Dashboard Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The school-dashboard folder contains the Vite + React SPA that serves as the administrative interface for the School Management System. It consumes the Express backend APIs and enforces the same role-based permissions through AuthContext, usePermissions, and API calls stored in src/utils/api.js.
 
-Currently, two official plugins are available:
+## Setup & running
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+1. Install dependencies from within school-dashboard:
+   `ash
+   npm install
+   `
+2. Run the dev server:
+   `ash
+   npm run dev
+   `
+   The app launches on http://localhost:5173 by default and proxies API calls to http://localhost:5000/api (update src/utils/api.js if you use a different backend host).
+3. Build for production:
+   `ash
+   npm run build
+   `
+   Use 
+pm run preview to locally test the build output.
 
-## React Compiler
+## Available scripts
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- 
+pm run dev – starts the Vite dev server with HMR.
+- 
+pm run build – bundles the frontend for production.
+- 
+pm run preview – serves the production build locally.
+- 
+pm run lint – runs ESLint across src.
 
-## Expanding the ESLint configuration
+## Architecture notes
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- **State management:** The SPA relies on custom hooks (useResultsData, usePermissions, useToast) and contexts (AuthContext, theme) to keep UI state centralized. Component pages (Results, Students, Attendance, etc.) mostly delegate data fetching to these hooks.
+- **API layer:** src/utils/api.js is the single HTTP client for backend calls. It automatically attaches the JWT from AuthContext, so keep it updated if the backend URL changes.
+- **Permissions:** usePermissions defines access tables for dmin, 	eacher, student, and parent. UI flows (add/edit/delete buttons, filter controls) check these permissions before rendering.
+
+## Best practices
+
+- Keep localStorage state aligned with useResultsData to avoid duplicate logic (active grade/term, persisted filters).
+- Leverage the modal components (ConfirmDialog, MessageModal) for confirm/delete flows rather than rolling new UI each time.
+- Run 
+pm run lint before committing changes to keep the shared ESLint config happy.
