@@ -3,7 +3,7 @@ const { t } = require('../i18n');
 
 module.exports = function (req, res, next) {
     // Get token from header
-    const token = req.header('x-auth-token');
+    const token = req.cookies?.token || req.header('x-auth-token');
 
     // Check if not token
     if (!token) {

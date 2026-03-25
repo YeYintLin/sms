@@ -1,6 +1,8 @@
 const express = require('express');
 const connectDB = require('./config/db');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const mongoSanitize = require('express-mongo-sanitize');
 const dotenv = require('dotenv');
 const localeMiddleware = require('./middleware/locale.middleware');
 
@@ -14,7 +16,13 @@ const app = express();
 
 // Init Middleware
 app.use(express.json({ extended: false, limit: '10mb' }));
-app.use(cors());
+const allowedOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+app.use(cors({
+    origin: allowedOrigin,
+    credentials: true
+}));
+app.use(cookieParser());
+app.use(mongoSanitize());
 app.use(express.urlencoded({ extended: false }));
 app.use(localeMiddleware);
 

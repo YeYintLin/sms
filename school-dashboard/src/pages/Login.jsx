@@ -17,6 +17,8 @@ const Login = ({ onLogin }) => {
     const [parentName, setParentName] = useState('');
     const [registerNumber, setRegisterNumber] = useState('');
     const [dateOfBirth, setDateOfBirth] = useState('');
+    const [subject, setSubject] = useState('');
+    const [contact, setContact] = useState('');
     const [isRegister, setIsRegister] = useState(false);
     const navigate = useNavigate();
     const { showToast } = useToast();
@@ -33,17 +35,15 @@ const Login = ({ onLogin }) => {
                 grade
             });
 
-            const { token, role: userRole, name, restrictions } = response.data;
+            const { role: userRole, name, restrictions } = response.data;
 
             // Store auth data
-            localStorage.setItem('auth', 'true');
             if (grade) {
                 localStorage.setItem('grade', grade);
             } else {
                 localStorage.removeItem('grade');
             }
             setAuthData({
-                token,
                 role: userRole,
                 userName: name,
                 restrictions
@@ -73,10 +73,12 @@ const Login = ({ onLogin }) => {
                 grade,
                 parentName,
                 registerNumber,
-                dateOfBirth
+                dateOfBirth,
+                subject,
+                contact
             });
 
-            if (response?.data?.token) {
+            if (response?.data) {
                 showToast(t('login.account_created'), 'success');
                 setIsRegister(false);
             }
@@ -239,6 +241,46 @@ const Login = ({ onLogin }) => {
                                 type="date"
                                 value={dateOfBirth}
                                 onChange={(e) => setDateOfBirth(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    borderRadius: '0.375rem',
+                                    border: '1px solid var(--border-color)',
+                                    backgroundColor: 'var(--white)',
+                                    color: 'var(--text-color)'
+                                }}
+                                required
+                            />
+                        </div>
+                    )}
+                    {isRegister && role === 'teacher' && (
+                        <div className="form-group" style={{ marginTop: '1rem' }}>
+                            <label style={{ color: 'var(--text-color)' }}>Subject <span style={{ color: 'var(--danger-color)' }}>*</span></label>
+                            <input
+                                type="text"
+                                placeholder="e.g. Mathematics"
+                                value={subject}
+                                onChange={(e) => setSubject(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    borderRadius: '0.375rem',
+                                    border: '1px solid var(--border-color)',
+                                    backgroundColor: 'var(--white)',
+                                    color: 'var(--text-color)'
+                                }}
+                                required
+                            />
+                        </div>
+                    )}
+                    {isRegister && role === 'teacher' && (
+                        <div className="form-group" style={{ marginTop: '1rem' }}>
+                            <label style={{ color: 'var(--text-color)' }}>Contact <span style={{ color: 'var(--danger-color)' }}>*</span></label>
+                            <input
+                                type="text"
+                                placeholder="+1 234 567 890"
+                                value={contact}
+                                onChange={(e) => setContact(e.target.value)}
                                 style={{
                                     width: '100%',
                                     padding: '0.75rem',

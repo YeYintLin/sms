@@ -23,35 +23,67 @@ import TeacherProfile from './pages/TeacherProfile';
 import Parents from './pages/Parents';
 import Attendance from './pages/Attendance';
 import { useAuth } from './context/AuthContext.jsx';
+import api from './utils/api';
 
 function App() {
-  const { token, clearAuthData } = useAuth();
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return Boolean(token);
-  });
+  const { isAuthenticated, isAuthChecked, role, clearAuthData } = useAuth();
   const [userRole, setUserRole] = useState(() => {
     return localStorage.getItem('role') || null;
   });
 
-  useEffect(() => {
-    setIsAuthenticated(Boolean(token));
-  }, [token]);
-
   const handleLogin = (role) => {
-    setIsAuthenticated(true);
     setUserRole(role);
   };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
+  const handleLogout = async () => {
     setUserRole(null);
-    localStorage.removeItem('auth');
     localStorage.removeItem('grade');
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // ignore logout errors
+    }
     clearAuthData();
   };
 
+  useEffect(() => {
+    if (role === 'admin') return undefined;
+
+    const onContextMenu = (e) => {
+      e.preventDefault();
+    };
+
+    const onKeyDown = (e) => {
+      const key = e.key?.toLowerCase?.() || '';
+      const isF12 = e.key === 'F12';
+      const isCtrlShift = e.ctrlKey && e.shiftKey;
+      const isCmdAlt = e.metaKey && e.altKey;
+      const blockedCombo =
+        isF12 ||
+        (isCtrlShift && ['i', 'j', 'c'].includes(key)) ||
+        (e.ctrlKey && key === 'u') ||
+        (isCmdAlt && ['i', 'j', 'c'].includes(key));
+
+      if (blockedCombo) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    window.addEventListener('contextmenu', onContextMenu);
+    window.addEventListener('keydown', onKeyDown, true);
+
+    return () => {
+      window.removeEventListener('contextmenu', onContextMenu);
+      window.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, [role]);
+
   // Simple Auth Check Wrapper (no permission check)
   const AuthRoute = ({ children }) => {
+    if (!isAuthChecked) {
+      return null;
+    }
     if (!isAuthenticated) {
       return <Navigate to="/login" replace />;
     }

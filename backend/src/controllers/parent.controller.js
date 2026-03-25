@@ -21,6 +21,9 @@ exports.getParent = async (req, res) => {
     try {
         const parent = await Parent.findOne({ parentId: req.params.id }).populate('userId', ['name', 'email']);
         if (!parent) return res.status(404).json({ msg: 'Parent not found' });
+        if (req.user.role === 'parent' && parent.userId && parent.userId._id.toString() !== req.user.id) {
+            return res.status(403).json({ msg: 'Not authorized to view this parent' });
+        }
         res.json(parent);
     } catch (err) {
         console.error(err.message);

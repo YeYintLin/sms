@@ -12,7 +12,7 @@ const LOGIN_LOCK_MINUTES = 15;
 // @route   POST /api/auth/register
 // @access  Public
 exports.register = async (req, res) => {
-    const { name, email, password, role, parentName, registerNumber, dateOfBirth } = req.body;
+    const { name, email, password, role, parentName, registerNumber, dateOfBirth, grade, subject, contact, classroom, experience } = req.body;
 
     try {
         let user = await User.findOne({ email });
@@ -35,6 +35,46 @@ exports.register = async (req, res) => {
         });
 
         await user.save();
+        try {
+            if (safeRole === 'student') {
+                const studentId = typeof registerNumber === 'string' ? registerNumber.trim() : '';
+                const studentGrade = typeof grade === 'string' ? grade.trim() : '';
+                if (!studentId || !studentGrade) {
+                    throw new Error('Student registration requires registerNumber and grade');
+                }
+                const student = new Student({
+                    userId: user.id,
+                    studentId,
+                    grade: studentGrade,
+                    classroom: typeof classroom === 'string' ? classroom.trim() : '',
+                    birthday: dateOfBirth ? new Date(dateOfBirth) : undefined,
+                    contact: typeof contact === 'string' ? contact.trim() : ''
+                });
+                await student.save();
+            }
+
+            if (safeRole === 'teacher') {
+                const teacherGrade = typeof grade === 'string' ? grade.trim() : '';
+                const teacherSubject = typeof subject === 'string' ? subject.trim() : '';
+                const teacherContact = typeof contact === 'string' ? contact.trim() : '';
+                if (!teacherGrade || !teacherSubject || !teacherContact) {
+                    throw new Error('Teacher registration requires grade, subject, and contact');
+                }
+                const teacher = new Teacher({
+                    userId: user.id,
+                    subject: teacherSubject,
+                    grade: teacherGrade,
+                    classroom: typeof classroom === 'string' ? classroom.trim() : '',
+                    experience: typeof experience === 'string' ? experience.trim() : '',
+                    contact: teacherContact,
+                    birthday: dateOfBirth ? new Date(dateOfBirth) : undefined
+                });
+                await teacher.save();
+            }
+        } catch (profileErr) {
+            await User.findByIdAndDelete(user.id);
+            return res.status(400).json({ msg: profileErr.message || 'Profile creation failed' });
+        }
 
         const payload = {
             user: {
@@ -49,7 +89,13 @@ exports.register = async (req, res) => {
             { expiresIn: 360000 },
             (err, token) => {
                 if (err) throw err;
-                res.json({ token });
+                res.cookie('token', token, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'lax',
+                    maxAge: 360000 * 1000
+                });
+                res.json({ role: user.role, name: user.name });
             }
         );
     } catch (err) {
@@ -130,8 +176,13 @@ exports.login = async (req, res) => {
             { expiresIn: 360000 },
             (err, token) => {
                 if (err) throw err;
+                res.cookie('token', token, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'lax',
+                    maxAge: 360000 * 1000
+                });
                 res.json({
-                    token,
                     role: user.role,
                     name: user.name,
                     restrictions: {
@@ -246,4 +297,16 @@ exports.updateUser = async (req, res) => {
         console.error(err.message);
         res.status(500).json({ msg: t(req, 'common.server_error') });
     }
+};
+
+// @desc    Logout user (clear auth cookie)
+// @route   POST /api/auth/logout
+// @access  Private
+exports.logout = async (req, res) => {
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+    });
+    res.status(204).send();
 };

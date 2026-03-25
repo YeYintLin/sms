@@ -22,9 +22,14 @@ const Attendance = () => {
     const [isReportLoading, setIsReportLoading] = useState(false);
 
     const gradeOptions = useMemo(() => {
+        const studentList = Array.isArray(students) ? students : [];
         const order = ['KG', ...Array.from({ length: 12 }, (_, i) => `Grade ${i + 1}`)];
-        const set = new Set(students.map((s) => s.grade).filter(Boolean));
-        return Array.from(set).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+        const orderIndex = (value) => {
+            const idx = order.indexOf(value);
+            return idx === -1 ? order.length : idx;
+        };
+        const set = new Set(studentList.map((s) => s.grade).filter(Boolean));
+        return Array.from(set).sort((a, b) => orderIndex(a) - orderIndex(b));
     }, [students]);
 
     const classroomOptions = useMemo(() => ['A', 'B', 'C'], []);
@@ -34,8 +39,8 @@ const Attendance = () => {
             if (userRole !== 'teacher') return;
             try {
                 const res = await api.get('/auth/me');
-                const grade = res.data?.profile?.grade || '';
-                const classroom = res.data?.profile?.classroom || '';
+                const grade = res.data?.profile?.grade || 'N/A';
+                const classroom = res.data?.profile?.classroom || 'N/A';
                 setTeacherGrade(grade);
                 setTeacherClassroom(classroom);
                 setSelectedGrade(grade);
@@ -53,7 +58,8 @@ const Attendance = () => {
         const loadStudents = async () => {
             try {
                 const res = await api.get('/students');
-                setStudents(res.data || []);
+                const payload = res.data?.data;
+                setStudents(Array.isArray(payload) ? payload : []);
             } catch {
                 showToast('Failed to load students', 'error');
             }
@@ -145,7 +151,7 @@ const Attendance = () => {
                 records: records.map((r) => ({
                     studentId: r.studentId,
                     status: r.status,
-                    remark: r.remark || ''
+                    remark: r.remark || 'N/A'
                 }))
             });
             showToast('Attendance saved', 'success');
@@ -201,7 +207,7 @@ const Attendance = () => {
                             <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
                                 Grade
                             </label>
-                            <input type="text" value={teacherGrade || '—'} disabled />
+                            <input type="text" value={teacherGrade || 'N/A'} disabled />
                         </div>
                     )}
                     {userRole === 'admin' ? (
@@ -224,7 +230,7 @@ const Attendance = () => {
                             <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
                                 Classroom
                             </label>
-                            <input type="text" value={teacherClassroom || '—'} disabled />
+                            <input type="text" value={teacherClassroom || 'N/A'} disabled />
                         </div>
                     )}
                 </div>
@@ -304,7 +310,7 @@ const Attendance = () => {
                                         <input
                                             type="text"
                                             placeholder="Optional remark"
-                                            value={r.remark || ''}
+                                            value={r.remark || 'N/A'}
                                             onChange={(e) => handleRemarkChange(r.studentId, e.target.value)}
                                         />
                                     </td>

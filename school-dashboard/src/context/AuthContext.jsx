@@ -2,14 +2,12 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import api from '../utils/api';
 
 const STORAGE_KEYS = {
-    token: 'token',
     role: 'role',
     name: 'userName',
     restrictions: 'restrictions'
 };
 
 const readStorage = () => {
-    const token = localStorage.getItem(STORAGE_KEYS.token);
     const role = localStorage.getItem(STORAGE_KEYS.role);
     const name = localStorage.getItem(STORAGE_KEYS.name);
     let restrictions = {};
@@ -20,7 +18,6 @@ const readStorage = () => {
         restrictions = {};
     }
     return {
-        token,
         role,
         userName: name || 'User',
         restrictions
@@ -28,7 +25,8 @@ const readStorage = () => {
 };
 
 const AuthContext = createContext({
-    token: null,
+    isAuthenticated: false,
+    isAuthChecked: false,
     role: null,
     userName: 'User',
     restrictions: {},
@@ -38,22 +36,16 @@ const AuthContext = createContext({
 
 export const AuthProvider = ({ children }) => {
     const stored = readStorage();
-    const [token, setToken] = useState(stored.token);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isAuthChecked, setIsAuthChecked] = useState(false);
     const [role, setRole] = useState(stored.role);
     const [userName, setUserName] = useState(stored.userName);
     const [restrictions, setRestrictions] = useState(stored.restrictions);
 
     const syncToStorage = useCallback((next) => {
-        const nextToken = next.token ?? null;
         const nextRole = next.role ?? null;
         const nextName = next.userName ?? 'User';
         const nextRestrictions = next.restrictions ?? {};
-
-        if (nextToken) {
-            localStorage.setItem(STORAGE_KEYS.token, nextToken);
-        } else {
-            localStorage.removeItem(STORAGE_KEYS.token);
-        }
 
         if (nextRole) {
             localStorage.setItem(STORAGE_KEYS.role, nextRole);
@@ -73,16 +65,15 @@ export const AuthProvider = ({ children }) => {
             localStorage.removeItem(STORAGE_KEYS.restrictions);
         }
 
-        setToken(nextToken);
         setRole(nextRole);
         setUserName(nextName);
         setRestrictions(nextRestrictions);
     }, []);
 
     const setAuthData = useCallback(
-        ({ token: newToken, role: newRole, userName: newName, restrictions: newRestrictions }) => {
+        ({ role: newRole, userName: newName, restrictions: newRestrictions }) => {
+            setIsAuthenticated(true);
             syncToStorage({
-                token: newToken,
                 role: newRole,
                 userName: newName,
                 restrictions: newRestrictions
@@ -92,37 +83,42 @@ export const AuthProvider = ({ children }) => {
     );
 
     const clearAuthData = useCallback(() => {
-        syncToStorage({ token: null, role: null, userName: 'User', restrictions: {} });
+        setIsAuthenticated(false);
+        syncToStorage({ role: null, userName: 'User', restrictions: {} });
     }, [syncToStorage]);
 
     useEffect(() => {
-        if (!token) return undefined;
         let canceled = false;
         const fetchProfile = async () => {
             try {
                 const response = await api.get('/auth/me');
                 if (canceled) return;
                 const { role: serverRole, name: serverName, restrictions: serverRestrictions } = response.data || {};
+                setIsAuthenticated(true);
                 syncToStorage({
-                    token,
                     role: serverRole || role,
                     userName: serverName || userName,
                     restrictions: serverRestrictions || restrictions
                 });
             } catch {
-                // ignore
+                if (!canceled) {
+                    setIsAuthenticated(false);
+                }
+            } finally {
+                if (!canceled) {
+                    setIsAuthChecked(true);
+                }
             }
         };
         fetchProfile();
         return () => {
             canceled = true;
         };
-    }, [token, role, userName, restrictions, syncToStorage]);
+    }, [role, userName, restrictions, syncToStorage]);
 
     useEffect(() => {
         const handleStorage = () => {
             const storedState = readStorage();
-            setToken(storedState.token);
             setRole(storedState.role);
             setUserName(storedState.userName);
             setRestrictions(storedState.restrictions);
@@ -135,7 +131,7 @@ export const AuthProvider = ({ children }) => {
 
     return (
         <AuthContext.Provider
-            value={{ token, role, userName, restrictions, setAuthData, clearAuthData }}
+            value={{ isAuthenticated, isAuthChecked, role, userName, restrictions, setAuthData, clearAuthData }}
         >
             {children}
         </AuthContext.Provider>

@@ -12,11 +12,13 @@ import { useAuth } from '../context/AuthContext.jsx';
  */
 const ProtectedRoute = ({ children, resource, permission = 'view', redirectTo = '/' }) => {
     const { canView, canCreate, canUpdate, canDelete, restrictions } = usePermissions();
-    const { token } = useAuth();
+    const { isAuthenticated, isAuthChecked } = useAuth();
     const location = useLocation();
 
     // Check if user is authenticated
-    const isAuthenticated = Boolean(token);
+    if (!isAuthChecked) {
+        return null;
+    }
     if (!isAuthenticated) {
         return <Navigate to="/login" replace />;
     }
