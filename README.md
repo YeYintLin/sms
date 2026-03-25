@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ﻿# School Management Dashboard
 
 This repo bundles the School Management System stack: a school-dashboard Vite/React SPA and an Express/Mongo backend. The workspace root orchestrates shared scripts (start-all, linting, CI) while each package keeps its own dependencies, configs, and lifecycle scripts.
@@ -73,3 +74,6 @@ Middleware (uth, oleCheck, locale, rate limiting) guard the express routes and
 
 - Keep secrets out of version control. Only .env.example is tracked.
 - CI and automated tests are not yet wired up—run lint scripts or manual checks before releasing.
+=======
+# sms
+>>>>>>> 772d31c9304abc9c65e9c3c15b50ac4144292705
