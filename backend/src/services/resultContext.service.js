@@ -1,8 +1,6 @@
 const Student = require('../models/Student');
 const { getTeacherContext } = require('./classroomContext.service');
 
-const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
 const buildResultQuery = async ({ user, gradeQuery, termQuery }) => {
     const role = user.role;
     if (role === 'admin') {
