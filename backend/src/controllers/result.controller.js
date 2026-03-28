@@ -30,8 +30,7 @@ const assertTeacherCanAccessStudent = (ctx, student) => {
 // @route   GET /api/results
 // @access  Private
 exports.getResults = async (req, res) => {
-    try {
-        const role = req.user.role;
+    try {        
         const gradeQuery = (req.query.grade || '').trim();
         const termQuery = (req.query.term || '').trim();
         const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
